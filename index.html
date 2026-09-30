@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,560;1,9..144,560&family=Outfit:wght@380;500;640&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=6" />
+    <link rel="stylesheet" href="styles.css?v=7" />
   </head>
   <body>
     <header class="top">
@@ -22,8 +22,8 @@
         <p class="eyebrow">Let's Build · Hackathon 2026</p>
         <h1>Shortlist</h1>
         <p class="lede">
-          The shortlisted apps, in order. Read what each one does, watch how it
-          looks, then open the live app.
+          The shortlisted apps, in order. Give 3, 2 and 1 point, add a note if
+          you want, then send your vote.
         </p>
       </div>
       <form class="search" role="search">
@@ -34,6 +34,18 @@
 
     <div class="filters" id="filters" role="toolbar" aria-label="Filter apps"></div>
 
+    <form class="ballot" id="ballot">
+      <label class="ballot-name">
+        <span>Your name</span>
+        <input id="judge" name="judge" autocomplete="name" placeholder="Name in the sheet" />
+      </label>
+      <div class="ballot-picks" id="ballot-picks"></div>
+      <div class="ballot-send">
+        <button class="btn primary" id="send" type="submit">Send vote</button>
+        <p class="ballot-status" id="ballot-status" role="status"></p>
+      </div>
+    </form>
+
     <div class="shell" id="shell">
       <aside class="list-wrap">
         <p class="count" id="count"></p>
@@ -43,6 +55,6 @@
     </div>
 
     <script src="data.js?v=9"></script>
-    <script src="app.js?v=7"></script>
+    <script src="app.js?v=8"></script>
   </body>
 </html>
