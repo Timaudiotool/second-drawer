@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,560;1,9..144,560&family=Outfit:wght@380;500;640&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=9" />
+    <link rel="stylesheet" href="styles.css?v=10" />
   </head>
   <body>
     <header class="top">
@@ -22,8 +22,8 @@
         <p class="eyebrow">Let's Build · Hackathon 2026</p>
         <h1>Shortlist</h1>
         <p class="lede">
-          Rank each category 1st, 2nd and 3rd. A note on an app is optional.
-          Sending again replaces your last vote in that category.
+          Drag each category into your order. The top app is 1st. A note is
+          optional.
         </p>
       </div>
       <form class="search" role="search">
@@ -34,18 +34,6 @@
 
     <div class="filters" id="filters" role="toolbar" aria-label="Filter apps"></div>
 
-    <form class="ballot" id="ballot">
-      <label class="ballot-name">
-        <span>Your name</span>
-        <input id="judge" name="judge" autocomplete="name" placeholder="Name in the sheet" />
-      </label>
-      <div class="ballot-board" id="ballot-picks"></div>
-      <div class="ballot-send">
-        <button class="btn primary" id="send" type="submit">Send vote</button>
-        <p class="ballot-status" id="ballot-status" role="status"></p>
-      </div>
-    </form>
-
     <div class="shell" id="shell">
       <aside class="list-wrap">
         <p class="count" id="count"></p>
@@ -54,7 +42,14 @@
       <main class="stage" id="stage"></main>
     </div>
 
+    <form class="vote-bar" id="ballot">
+      <label class="sr" for="judge">Your name</label>
+      <input id="judge" name="judge" autocomplete="name" placeholder="Your name" />
+      <p class="ballot-status" id="ballot-status" role="status"></p>
+      <button class="btn primary" id="send" type="submit">Send vote</button>
+    </form>
+
     <script src="data.js?v=9"></script>
-    <script src="app.js?v=10"></script>
+    <script src="app.js?v=11"></script>
   </body>
 </html>

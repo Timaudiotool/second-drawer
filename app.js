@@ -55,7 +55,6 @@ const PLACES = [
 
 const ballotForm = document.getElementById("ballot");
 const judgeEl = document.getElementById("judge");
-const picksEl = document.getElementById("ballot-picks");
 const sendEl = document.getElementById("send");
 const statusEl = document.getElementById("ballot-status");
 
@@ -157,47 +156,26 @@ function setStatus(text, href) {
   }
 }
 
-function syncBallot() {
-  const focus = state.challenge || categoryOf(appById(state.selected) || {}) || "";
-  picksEl.replaceChildren();
-  for (const [id, label] of CHALLENGES) {
-    const slots = state.picks[id];
-    const picks = el("div", { class: "cat-picks" });
-    for (const [place, placeLabel] of PLACES) {
-      const app = appById(slots[place]);
-      picks.append(
-        el(
-          "button",
-          {
-            class: app ? "pick filled" : "pick",
-            type: "button",
-            onclick: () => {
-              if (app) select(app.id);
-            },
-          },
-          [el("b", { text: placeLabel }), el("span", { text: app ? voteName(app) : "Not chosen" })]
-        )
-      );
-    }
-    const done = categoryComplete(id);
-    picksEl.append(
-      el("div", { class: "cat-row" }, [
-        el("button", {
-          class: done ? "cat-name done" : "cat-name",
-          type: "button",
-          pressed: focus === id,
-          text: label,
-          onclick: () => {
-            state.challenge = state.challenge === id ? "" : id;
-            render();
-          },
-        }),
-        picks,
-      ])
-    );
-  }
+function syncSend() {
   const ready = state.judge.trim() && CHALLENGES.every(([id]) => categoryComplete(id));
   sendEl.disabled = state.sending || !ready;
+}
+
+function categoryMembers(categoryId) {
+  return APPS.filter((app) => categoryOf(app) === categoryId);
+}
+
+function sectionApps(categoryId, apps) {
+  const group = apps.filter((app) => app.challenges.includes(categoryId));
+  if (!categoryComplete(categoryId)) return ordered(categoryId, group);
+  const ranked = PLACES.map(([place]) => appById(state.picks[categoryId][place])).filter(
+    (app) => app && group.includes(app)
+  );
+  const rest = ordered(
+    categoryId,
+    group.filter((app) => !ranked.includes(app))
+  );
+  return [...ranked, ...rest];
 }
 
 function assign(id, place) {
@@ -221,7 +199,7 @@ function paintVote() {
   for (const button of stageEl.querySelectorAll("[data-place]")) {
     button.setAttribute("aria-pressed", Number(button.dataset.place) === place ? "true" : "false");
   }
-  syncBallot();
+  syncSend();
 }
 
 function voteBox(app) {
@@ -256,7 +234,7 @@ function voteBox(app) {
   return el("section", { class: "vote-box" }, [
     el("h3", { text: `Place in ${label}` }),
     points,
-    el("p", { class: "vote-hint", text: "Rank this category 1st, 2nd and 3rd. Click a place again to undo." }),
+    el("p", { class: "vote-hint", text: "Or drag this category in the list. The top row is 1st." }),
     note,
   ]);
 }
@@ -274,7 +252,7 @@ async function sendVote() {
     return;
   }
   state.sending = true;
-  syncBallot();
+  syncSend();
   setStatus("Sending…");
   let sent = 0;
   try {
@@ -301,8 +279,66 @@ async function sendVote() {
     setStatus("Sent a ranking for all 6 categories. Each category is its own row. Sending again replaces that category.");
   } finally {
     state.sending = false;
-    syncBallot();
+    syncSend();
   }
+}
+
+let drag = null;
+
+function rowsIn(categoryId) {
+  return [...listEl.querySelectorAll(".app-row")].filter((row) => row.dataset.cat === categoryId);
+}
+
+function commitOrder(categoryId) {
+  const ids = rowsIn(categoryId).map((row) => row.dataset.id);
+  const members = categoryMembers(categoryId).map((app) => app.id);
+  if (ids.length !== members.length || ids.some((id) => !members.includes(id))) return;
+  state.picks[categoryId] = { 1: ids[0], 2: ids[1], 3: ids[2] };
+  saveVote();
+  paintVote();
+}
+
+function bindDrag(grip, app) {
+  grip.addEventListener("pointerdown", (event) => {
+    if (event.button != null && event.button !== 0) return;
+    const cat = categoryOf(app);
+    if (rowsIn(cat).length !== categoryMembers(cat).length) return;
+    event.preventDefault();
+    event.stopPropagation();
+    try {
+      grip.setPointerCapture(event.pointerId);
+    } catch {
+      /* Pointer capture is unavailable for this event. */
+    }
+    drag = { cat, id: app.id, pointer: event.pointerId, moved: false };
+    grip.closest(".app-row").classList.add("dragging");
+  });
+  grip.addEventListener("pointermove", (event) => {
+    if (!drag || drag.id !== app.id || drag.pointer !== event.pointerId) return;
+    const row = grip.closest(".app-row");
+    const others = rowsIn(drag.cat).filter((item) => item !== row);
+    if (!others.length) return;
+    drag.moved = true;
+    let before = null;
+    for (const other of others) {
+      const box = other.getBoundingClientRect();
+      if (event.clientY < box.top + box.height / 2) {
+        before = other;
+        break;
+      }
+    }
+    listEl.insertBefore(row, before || others[others.length - 1].nextSibling);
+  });
+  const finish = (event) => {
+    if (!drag || drag.id !== app.id || drag.pointer !== event.pointerId) return;
+    const moved = drag.moved;
+    const cat = drag.cat;
+    drag = null;
+    if (moved) commitOrder(cat);
+    else grip.closest(".app-row").classList.remove("dragging");
+  };
+  grip.addEventListener("pointerup", finish);
+  grip.addEventListener("pointercancel", finish);
 }
 
 function hue(id) {
@@ -387,11 +423,12 @@ function renderList(apps) {
     listEl.append(el("p", { class: "empty", text: "Nothing matches that search." }));
     return;
   }
-  const sections = state.challenge
-    ? [[state.challenge, ordered(state.challenge, apps)]]
-    : CHALLENGES.map(([id, label]) => [label, ordered(id, apps.filter((app) => app.challenges.includes(id)))]).filter(([, group]) => group.length);
-  for (const [label, group] of sections) {
-    if (!state.challenge) listEl.append(el("p", { class: "group-label", text: label }));
+  const sections = CHALLENGES.map(([id, label]) => [id, label, sectionApps(id, apps)]).filter(([, , group]) => group.length);
+  for (const [id, label, group] of sections) {
+    const heading = el("p", { class: "group-label" });
+    heading.append(document.createTextNode(label));
+    if (!categoryComplete(id)) heading.append(el("span", { class: "hint", text: " · drag to rank" }));
+    listEl.append(heading);
     for (const app of group) appendRow(app);
   }
 }
@@ -402,26 +439,41 @@ function appendRow(app) {
     mark.style.background = PAPER[color];
     mark.style.color = INK[color];
     const place = rankOf(app.id);
+    const grip = el("span", {
+      class: place ? "grip ranked" : "grip",
+      text: place ? String(place) : "↕",
+      title: "Drag to rank this category",
+      "aria-label": place ? `Place ${place}. Drag to reorder` : "Drag to rank this category",
+    });
     const copy = el("span", {}, [
       el("span", { class: "row-name", text: app.name }),
       el("span", {
         class: "row-pitch",
         text: app.people || "",
       }),
-      ...(place ? [el("span", { class: "rank-badge", text: PLACES[place - 1][1] })] : []),
     ]);
     const hasVideo = app.video && app.video.kind !== "note";
-    const row = el(
+    const open = el(
       "button",
       {
-        class: "app-row",
+        class: "row-main",
         type: "button",
-        role: "option",
-        "aria-selected": app.id === state.selected ? "true" : "false",
         onclick: () => select(app.id),
       },
-      [mark, copy, el("span", { class: hasVideo ? "dot" : "dot off", title: hasVideo ? "Has a demo video" : "" })]
+      [mark, copy]
     );
+    const row = el(
+      "div",
+      {
+        class: "app-row",
+        role: "option",
+        "aria-selected": app.id === state.selected ? "true" : "false",
+        "data-id": app.id,
+        "data-cat": categoryOf(app),
+      },
+      [grip, open, el("span", { class: hasVideo ? "dot" : "dot off", title: hasVideo ? "Has a demo video" : "" })]
+    );
+    bindDrag(grip, app);
     listEl.append(row);
 }
 
@@ -597,7 +649,7 @@ function render() {
   renderFilters();
   renderList(apps);
   renderStage(APPS.find((app) => app.id === state.selected));
-  syncBallot();
+  syncSend();
   const nextHash = state.selected ? `#${state.selected}` : "";
   if (location.hash !== nextHash) history.replaceState(null, "", nextHash || location.pathname);
 }
@@ -610,7 +662,7 @@ searchEl.addEventListener("input", () => {
 judgeEl.addEventListener("input", () => {
   state.judge = judgeEl.value;
   saveVote();
-  syncBallot();
+  syncSend();
 });
 
 ballotForm.addEventListener("submit", (event) => {
