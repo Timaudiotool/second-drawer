@@ -1,7 +1,7 @@
 const CHALLENGES = [
+  ["Music Games & Interactive Experiences", "Music games"],
   ["Ideation & Discovery", "Ideation"],
   ["Composition & Theory", "Composition"],
-  ["Music Games & Interactive Experiences", "Music games"],
   ["Sound Design & Synthesis", "Sound design"],
   ["Connect & Integrate", "Connect"],
   ["Distribution & Marketing", "Distribution"],

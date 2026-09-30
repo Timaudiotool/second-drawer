@@ -115,7 +115,7 @@ h1 {
   padding: 6px 6px 6px 16px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: rgba(23, 25, 16, 0.94);
+  background: #171910;
 }
 .vote-bar input {
   width: min(240px, 34vw);
@@ -520,7 +520,8 @@ details.fold summary {
     bottom: 8px;
     margin: 8px 12px 12px;
     border-radius: 18px;
-    z-index: 2;
+    z-index: 4;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.6);
   }
   .vote-bar input { width: 120px; }
   .app-card { grid-template-columns: 34px 16px 46px 1fr; }
