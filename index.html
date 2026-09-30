@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shortlist — Let's Build 2026</title>
+    <meta
+      name="description"
+      content="The Let's Build 2026 shortlist. See what each app does, watch the demo, and open the live app."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,560;1,9..144,560&family=Outfit:wght@380;500;640&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css?v=6" />
+  </head>
+  <body>
+    <header class="top">
+      <div class="top-copy">
+        <p class="eyebrow">Let's Build · Hackathon 2026</p>
+        <h1>Shortlist</h1>
+        <p class="lede">
+          The shortlisted apps, in order. Read what each one does, watch how it
+          looks, then open the live app.
+        </p>
+      </div>
+      <form class="search" role="search">
+        <label class="sr" for="q">Search apps</label>
+        <input id="q" type="search" placeholder="Search name, maker, or what it does" autocomplete="off" />
+      </form>
+    </header>
+
+    <div class="filters" id="filters" role="toolbar" aria-label="Filter apps"></div>
+
+    <div class="shell" id="shell">
+      <aside class="list-wrap">
+        <p class="count" id="count"></p>
+        <div class="list" id="list" role="listbox" aria-label="Apps"></div>
+      </aside>
+      <main class="stage" id="stage"></main>
+    </div>
+
+    <script src="data.js?v=9"></script>
+    <script src="app.js?v=7"></script>
+  </body>
+</html>
