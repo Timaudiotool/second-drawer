@@ -496,7 +496,11 @@ window.APPS = [
     ],
     "url": "https://shumform.com/",
     "password": "",
-    "video": null,
+    "video": {
+      "kind": "iframe",
+      "src": "https://www.youtube-nocookie.com/embed/B8zyvay63jU",
+      "href": "https://www.youtube.com/watch?v=B8zyvay63jU&t=48s"
+    },
     "github": "https://github.com/HASHQIX/SHUMFORM.git",
     "source": "",
     "sourceNote": "",
