@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Magic Deck app icon</title>
+  <desc id="desc">A glowing red record deck with an angular M-shaped audio waveform and a magic sparkle.</desc>
+  <defs>
+    <linearGradient id="background" x1="128" y1="80" x2="896" y2="944" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3D0000"/>
+      <stop offset="0.52" stop-color="#160000"/>
+      <stop offset="1"/>
+    </linearGradient>
+    <radialGradient id="platter" cx="0" cy="0" r="1" gradientTransform="translate(414 374) rotate(52) scale(516)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#520000"/>
+      <stop offset="0.58" stop-color="#170000"/>
+      <stop offset="1" stop-color="#050000"/>
+    </radialGradient>
+    <linearGradient id="signal" x1="248" y1="650" x2="775" y2="372" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#950101"/>
+      <stop offset="0.48" stop-color="#FF0000"/>
+      <stop offset="1" stop-color="#FF5A4F"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="18" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="soft-glow" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="9" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" rx="224" fill="#000000"/>
+  <rect x="28" y="28" width="968" height="968" rx="204" fill="url(#background)" stroke="#950101" stroke-width="8"/>
+
+  <circle cx="512" cy="526" r="326" fill="url(#platter)" stroke="#950101" stroke-width="14"/>
+  <circle cx="512" cy="526" r="276" fill="none" stroke="#950101" stroke-opacity="0.42" stroke-width="8"/>
+  <circle cx="512" cy="526" r="224" fill="none" stroke="#950101" stroke-opacity="0.3" stroke-width="7"/>
+  <circle cx="512" cy="526" r="170" fill="none" stroke="#950101" stroke-opacity="0.24" stroke-width="6"/>
+
+  <path d="M230 570H306L362 423L447 650L522 466L590 595L660 390L716 540H794"
+        fill="none" stroke="#3D0000" stroke-width="74" stroke-linecap="round" stroke-linejoin="round" opacity="0.92"/>
+  <path d="M230 570H306L362 423L447 650L522 466L590 595L660 390L716 540H794"
+        fill="none" stroke="url(#signal)" stroke-width="40" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+
+  <circle cx="512" cy="526" r="30" fill="#FFF4F1" stroke="#FF0000" stroke-width="13" filter="url(#soft-glow)"/>
+
+  <g fill="#FFF4F1" stroke="#FF0000" stroke-linejoin="round" filter="url(#soft-glow)">
+    <path d="M796 154C806 210 834 238 890 248C834 258 806 286 796 342C786 286 758 258 702 248C758 238 786 210 796 154Z" stroke-width="9"/>
+    <path d="M884 330C889 356 902 369 928 374C902 379 889 392 884 418C879 392 866 379 840 374C866 369 879 356 884 330Z" stroke-width="7"/>
+  </g>
+
+  <path d="M232 810C315 878 414 912 512 912C610 912 709 878 792 810" fill="none" stroke="#FF0000" stroke-opacity="0.55" stroke-width="14" stroke-linecap="round"/>
+</svg>

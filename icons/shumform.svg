@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">SHUMFORM — Minimal</title>
+  <desc id="desc">A black rounded app icon with an upright, solid white pixel mark and large satellite squares.</desc>
+  <rect width="1024" height="1024" rx="180" fill="#000000"/>
+  <g fill="#FFFFFF">
+    <path d="M352 338H496V456H616V338H692V598H616V734H506V650H280V456H352Z"/>
+    <rect x="466" y="176" width="98" height="98"/>
+    <rect x="136" y="459" width="94" height="94"/>
+    <rect x="756" y="459" width="94" height="94"/>
+    <rect x="506" y="790" width="110" height="110"/>
+  </g>
+</svg>

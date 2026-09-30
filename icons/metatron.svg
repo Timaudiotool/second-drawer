@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28" role="img" aria-label="Metatron">
+  <title>Metatron</title>
+  <!--
+    Header logo mark — extracted from the inline LOGO_SVG in src/ui/AppUI.ts
+    (viewBox 0 0 28 28), sized 28x28 by .app-logo-svg in src/ui/styles.css.
+
+    Original markup (for reference, var() names rewritten for the comments):
+      <svg class="app-logo-svg" viewBox="0 0 28 28" aria-hidden="true" focusable="false">
+        <rect x="0" y="0" width="28" height="28" rx="6"
+              fill="var(panel-solid)" stroke="var(accent-color)" stroke-width="1.5"/>
+        <path d="M 6 18 L 10 9 L 14 17 L 18 11 L 22 18" fill="none"
+              stroke="var(accent-color)" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+
+    The in-app version is themeable: both colors come from CSS custom
+    properties defined in src/ui/styles.css. This standalone file hardcodes
+    the EDIT-mode values (the app default mode) so it renders identically
+    outside the app:
+      panel-solid  -> #0d1117   (src/ui/styles.css:16)
+      accent-color -> #38bdf8   (src/ui/styles.css:64, html[data-mode="edit"])
+
+    For the USE-mode accent, replace #38bdf8 with #2dd4bf (src/ui/styles.css:57).
+  -->
+  <rect x="0" y="0" width="28" height="28" rx="6" fill="#0d1117" stroke="#38bdf8" stroke-width="1.5"/>
+  <path d="M 6 18 L 10 9 L 14 17 L 18 11 L 22 18" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

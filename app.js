@@ -28,6 +28,30 @@ function ordered(challenge, apps) {
 const INK = ["#1c1914", "#14201b", "#241714", "#171c28", "#241e10", "#1c1420"];
 const PAPER = ["#efe2c2", "#c9ead8", "#f3c2b2", "#d5def6", "#f3e0a4", "#f0c6df"];
 
+// Icons the teams submitted. Lark sent none, BrickHouse's file arrived corrupt,
+// so both keep the lettered mark.
+const ICONS = {
+  "ar-assistant": "icons/ar-assistant.png",
+  bbcverb: "icons/bbcverb.svg",
+  beatcorn: "icons/beatcorn.png",
+  "chord-suggester": "icons/chord-suggester.png",
+  "harmonic-quest": "icons/harmonic-quest.svg",
+  "keep-the-beat": "icons/keep-the-beat.svg",
+  "magic-deck": "icons/magic-deck.svg",
+  metatron: "icons/metatron.svg",
+  "pocket-producer": "icons/pocket-producer.svg",
+  "pocket-producer-library": "icons/pocket-producer-library.svg",
+  quill: "icons/quill.svg",
+  "rhythm-relay": "icons/rhythm-relay.svg",
+  "score-io": "icons/score-io.svg",
+  seedbed: "icons/seedbed.svg",
+  shumform: "icons/shumform.svg",
+  sigmora: "icons/sigmora.svg",
+};
+
+// Dark artwork on a transparent canvas needs a light tile to stay readable.
+const ICON_TILE_LIGHT = new Set(["beatcorn"]);
+
 const listEl = document.getElementById("list");
 const stageEl = document.getElementById("stage");
 const countEl = document.getElementById("count");
@@ -417,6 +441,21 @@ function hue(id) {
   return n;
 }
 
+function markNode(app, extra) {
+  const src = ICONS[app.id];
+  const classes = ["mark", src ? "icon" : "", ICON_TILE_LIGHT.has(app.id) ? "light" : "", extra || ""];
+  const box = el("span", { class: classes.filter(Boolean).join(" ") });
+  if (!src) {
+    const color = hue(app.id);
+    box.textContent = initials(app.name);
+    box.style.background = PAPER[color];
+    box.style.color = INK[color];
+    return box;
+  }
+  box.append(el("img", { src, alt: "", loading: "lazy", decoding: "async" }));
+  return box;
+}
+
 function initials(name) {
   const parts = name.replace(/[^A-Za-z0-9 ]/g, " ").trim().split(/\s+/);
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
@@ -516,28 +555,24 @@ function renderList(apps) {
 }
 
 function appendCard(app, ranked) {
-    const color = hue(app.id);
-    const mark = el("span", { class: "mark", text: initials(app.name) });
-    mark.style.background = PAPER[color];
-    mark.style.color = INK[color];
-    const grip = el("span", { class: "grip", text: "⠿", "aria-hidden": "true" });
-    const place = rankOf(app.id);
-    const copy = el("span", { class: "row-copy" }, [
-      el("span", { class: "row-name", text: app.name }),
-      el("span", { class: "row-pitch", text: app.people || "" }),
-    ]);
+  const grip = el("span", { class: "grip", text: "\u283f", "aria-hidden": "true" });
+  const place = rankOf(app.id);
+  const copy = el("span", { class: "row-copy" }, [
+    el("span", { class: "row-name", text: app.name }),
+    el("span", { class: "row-pitch", text: app.people || "" }),
+  ]);
   const card = el(
-      "div",
-      {
-        class: ranked ? "app-card ranked" : "app-card",
-        role: "option",
-        tabindex: "0",
-        "aria-selected": app.id === state.selected ? "true" : "false",
-        "aria-label": place ? `${place}. ${app.name}` : app.name,
-        "data-id": app.id,
-        "data-cat": categoryOf(app),
-      },
-    [grip, el("span", { class: "place", text: place ? String(place) : "" }), mark, copy]
+    "div",
+    {
+      class: ranked ? "app-card ranked" : "app-card",
+      role: "option",
+      tabindex: "0",
+      "aria-selected": app.id === state.selected ? "true" : "false",
+      "aria-label": place ? `${place}. ${app.name}` : app.name,
+      "data-id": app.id,
+      "data-cat": categoryOf(app),
+    },
+    [grip, el("span", { class: "place", text: place ? String(place) : "" }), markNode(app), copy]
   );
   listEl.append(card);
 }
@@ -630,9 +665,12 @@ function renderStage(app) {
       },
     }),
     el("div", { class: "stage-head" }, [
-      el("div", {}, [
-        el("h2", { text: app.name }),
-        el("p", { class: "byline", text: bylineBits.join(" · ") }),
+      el("div", { class: "stage-title" }, [
+        markNode(app, "big"),
+        el("div", {}, [
+          el("h2", { text: app.name }),
+          el("p", { class: "byline", text: bylineBits.join(" · ") }),
+        ]),
       ]),
       actions,
     ]),
