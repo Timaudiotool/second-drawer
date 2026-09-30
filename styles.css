@@ -400,6 +400,7 @@ h1 {
   white-space: nowrap;
 }
 .btn.primary { background: var(--lime); color: var(--lime-ink); }
+.btn:disabled { opacity: 0.35; cursor: default; }
 .btn.primary:hover { filter: brightness(1.05); }
 .btn.ghost { border-color: var(--line); background: transparent; color: var(--ink); }
 .btn:focus-visible { outline: 2px solid var(--lime); outline-offset: 3px; }

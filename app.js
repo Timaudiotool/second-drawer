@@ -196,7 +196,8 @@ function syncBallot() {
       ])
     );
   }
-  sendEl.disabled = state.sending;
+  const ready = state.judge.trim() && CHALLENGES.every(([id]) => categoryComplete(id));
+  sendEl.disabled = state.sending || !ready;
 }
 
 function assign(id, place) {
@@ -609,6 +610,7 @@ searchEl.addEventListener("input", () => {
 judgeEl.addEventListener("input", () => {
   state.judge = judgeEl.value;
   saveVote();
+  syncBallot();
 });
 
 ballotForm.addEventListener("submit", (event) => {
