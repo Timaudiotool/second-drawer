@@ -779,6 +779,13 @@ function pager(app) {
   ]);
 }
 
+function scrollDetailToTop() {
+  stageEl.scrollTop = 0;
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+}
+
 function select(id) {
   state.selected = id;
   history.replaceState(null, "", `#${id}`);
@@ -786,6 +793,8 @@ function select(id) {
     document.body.classList.add("show-detail");
   }
   render();
+  scrollDetailToTop();
+  requestAnimationFrame(scrollDetailToTop);
 }
 
 function render() {
