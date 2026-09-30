@@ -494,6 +494,16 @@ function visibleApps() {
   return APPS.filter(matches);
 }
 
+function browseSequence() {
+  const apps = visibleApps();
+  const categories = state.challenge ? [[state.challenge]] : CHALLENGES;
+  const rows = [];
+  for (const [id] of categories) {
+    for (const app of sectionApps(id, apps)) rows.push(app);
+  }
+  return rows;
+}
+
 function el(tag, attrs = {}, children = []) {
   const node = document.createElement(tag);
   for (const [key, value] of Object.entries(attrs)) {
@@ -662,11 +672,12 @@ function renderStage(app) {
     tags.append(el("span", { class: "tag", text: tag }));
   }
 
+  const backLabel = state.challenge ? categoryLabel(state.challenge) : "All apps";
   const children = [
     el("button", {
       class: "back",
       type: "button",
-      text: "← All apps",
+      text: `← ${backLabel}`,
       onclick: () => {
         document.body.classList.remove("show-detail");
         history.replaceState(null, "", location.pathname);
@@ -738,9 +749,34 @@ function renderStage(app) {
       ])
     );
   }
+  children.push(pager(app));
 
   stageEl.replaceChildren(el("div", { class: "stage-inner" }, children));
   stageEl.scrollTop = 0;
+}
+
+function pagerStep(app, dir) {
+  const label = dir === "next" ? "Next" : "Previous";
+  const button = el("button", {
+    class: dir === "next" ? "pager-btn next" : "pager-btn",
+    type: "button",
+    disabled: app ? false : "true",
+  }, [
+    el("span", { class: "pager-kicker", text: dir === "next" ? "Next →" : "← Previous" }),
+    el("b", { text: app ? app.name : "End of the list" }),
+  ]);
+  if (app) button.addEventListener("click", () => select(app.id));
+  button.setAttribute("aria-label", app ? `${label}: ${app.name}` : label);
+  return button;
+}
+
+function pager(app) {
+  const rows = browseSequence();
+  const index = rows.findIndex((item) => item.id === app.id);
+  return el("nav", { class: "pager", "aria-label": "More apps" }, [
+    pagerStep(index > 0 ? rows[index - 1] : null, "prev"),
+    pagerStep(index >= 0 && index < rows.length - 1 ? rows[index + 1] : null, "next"),
+  ]);
 }
 
 function select(id) {

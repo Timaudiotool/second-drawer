@@ -492,6 +492,41 @@ details.fold summary {
   padding: 0;
   font-weight: 640;
 }
+.pager {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 28px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.pager-btn {
+  min-width: 0;
+  border: 1px solid var(--line);
+  background: transparent;
+  border-radius: 14px;
+  padding: 12px 14px;
+  text-align: left;
+}
+.pager-btn.next { text-align: right; }
+.pager-btn:hover { border-color: rgba(214, 242, 92, 0.6); }
+.pager-btn:disabled { opacity: 0.35; cursor: default; }
+.pager-kicker {
+  display: block;
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 640;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.pager-btn b {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 640;
+}
 .empty {
   padding: 28px 16px;
   color: var(--muted);
