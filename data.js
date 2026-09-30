@@ -296,8 +296,8 @@ window.APPS = [
     "password": "",
     "video": {
       "kind": "iframe",
-      "src": "https://www.youtube-nocookie.com/embed/ARTcGMVqx0E",
-      "href": "https://youtu.be/ARTcGMVqx0E"
+      "src": "https://www.youtube-nocookie.com/embed/s56Rp_1M9OE",
+      "href": "https://youtu.be/s56Rp_1M9OE"
     },
     "github": "https://github.com/imChuling/pocket-producer",
     "source": "",
