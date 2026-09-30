@@ -45,16 +45,21 @@ a { color: inherit; }
 }
 
 .top {
-  display: grid;
-  grid-template-columns: 1fr minmax(240px, 380px);
-  gap: 32px;
-  align-items: end;
-  padding: 28px 28px 8px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 14px 28px 0;
+}
+.top-copy {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex: 0 0 auto;
 }
 .eyebrow {
-  margin: 0 0 6px;
+  margin: 0;
   color: var(--lime);
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 640;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -63,17 +68,24 @@ h1 {
   margin: 0;
   font-family: var(--serif);
   font-weight: 560;
-  font-size: clamp(40px, 5vw, 64px);
+  font-size: clamp(26px, 2.6vw, 34px);
   letter-spacing: -0.03em;
-  line-height: 0.9;
+  line-height: 1;
 }
 .lede {
-  max-width: 46ch;
-  margin: 12px 0 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
   color: var(--muted);
-  font-size: 16px;
-  line-height: 1.45;
+  font-size: 13px;
+  line-height: 1.35;
+  white-space: nowrap;
 }
+/* The one-line hint is the first thing to go when the header gets tight. */
+@media (max-width: 1240px) {
+  .lede { display: none; }
+}
+.search { flex: 0 0 min(340px, 32vw); }
 .search input {
   width: 100%;
   border: 1px solid var(--line);
@@ -88,7 +100,7 @@ h1 {
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding: 16px 28px 8px;
+  padding: 12px 28px 6px;
   scrollbar-width: none;
 }
 .filters::-webkit-scrollbar { display: none; }
@@ -513,8 +525,11 @@ details.fold summary {
 
 @media (max-width: 900px) {
   body { height: auto; overflow: auto; display: block; }
-  .top { grid-template-columns: 1fr; gap: 16px; padding: 20px 16px 4px; }
-  .filters { padding: 12px 16px; }
+  .top { flex-wrap: wrap; gap: 10px; padding: 14px 16px 0; }
+  .top-copy { width: 100%; }
+  .lede { display: none; }
+  .search { flex: 1 1 100%; }
+  .filters { padding: 10px 16px; }
   .vote-bar {
     position: sticky;
     bottom: 8px;
