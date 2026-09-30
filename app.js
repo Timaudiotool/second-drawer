@@ -312,78 +312,104 @@ function commitOrder(categoryId) {
   setOrder(categoryId, cardsIn(categoryId).map((card) => card.dataset.id));
 }
 
-function bindCard(card, grip, app) {
-  const categoryId = categoryOf(app);
-
-  card.addEventListener("pointerdown", (event) => {
-    if (event.button) return;
-    const fromGrip = grip.contains(event.target);
-    if (event.pointerType === "touch" && !fromGrip) return;
-    drag = { id: app.id, pointer: event.pointerId, startY: event.clientY, active: false };
-    if (fromGrip) event.preventDefault();
-  });
-
-  card.addEventListener("pointermove", (event) => {
-    if (!drag || drag.id !== app.id || drag.pointer !== event.pointerId) return;
-    if (!drag.active) {
-      if (Math.abs(event.clientY - drag.startY) < 5) return;
-      if (!wholeCategoryVisible(categoryId)) {
-        drag = null;
-        return;
-      }
-      drag.active = true;
-      card.classList.add("dragging");
-      card.setPointerCapture(event.pointerId);
+function followPointer(clientY) {
+  const card = drag.card;
+  const siblings = cardsIn(drag.cat).filter((item) => item !== card);
+  let before = null;
+  for (const other of siblings) {
+    const box = other.getBoundingClientRect();
+    if (clientY < box.top + box.height / 2) {
+      before = other;
+      break;
     }
-    event.preventDefault();
-    const others = cardsIn(categoryId).filter((item) => item !== card);
-    let before = null;
-    for (const other of others) {
-      const box = other.getBoundingClientRect();
-      if (event.clientY < box.top + box.height / 2) {
-        before = other;
-        break;
-      }
-    }
-    listEl.insertBefore(card, before || others[others.length - 1].nextSibling);
-  });
+  }
+  const anchor = before || siblings[siblings.length - 1].nextSibling;
+  if (anchor !== card && anchor !== card.nextSibling) listEl.insertBefore(card, anchor);
+  card.style.transform = "";
+  const flowTop = card.getBoundingClientRect().top;
+  card.style.transform = `translateY(${Math.round(clientY - drag.grab - flowTop)}px)`;
+}
 
-  const finish = (event) => {
-    if (!drag || drag.id !== app.id || drag.pointer !== event.pointerId) return;
-    const dragged = drag.active;
-    drag = null;
-    card.classList.remove("dragging");
-    if (dragged) commitOrder(categoryId);
-    else select(app.id);
+function endDrag(commit) {
+  const { card, cat, id, active } = drag;
+  drag = null;
+  card.style.transform = "";
+  card.classList.remove("dragging");
+  listEl.classList.remove("sorting");
+  if (!active) {
+    if (commit) select(id);
+    return;
+  }
+  if (commit) commitOrder(cat);
+  else paintVote();
+}
+
+listEl.addEventListener("pointerdown", (event) => {
+  if (event.button) return;
+  const card = event.target.closest(".app-card");
+  if (!card) return;
+  const fromGrip = Boolean(event.target.closest(".grip"));
+  if (event.pointerType === "touch" && !fromGrip) return;
+  drag = {
+    card,
+    id: card.dataset.id,
+    cat: card.dataset.cat,
+    pointer: event.pointerId,
+    startY: event.clientY,
+    grab: event.clientY - card.getBoundingClientRect().top,
+    active: false,
   };
-  card.addEventListener("pointerup", finish);
-  card.addEventListener("pointercancel", () => {
-    if (!drag || drag.id !== app.id) return;
-    const dragged = drag.active;
-    drag = null;
-    card.classList.remove("dragging");
-    if (dragged) paintVote();
-  });
+  if (fromGrip) event.preventDefault();
+});
 
-  card.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      select(app.id);
+window.addEventListener("pointermove", (event) => {
+  if (!drag || drag.pointer !== event.pointerId) return;
+  if (!drag.active) {
+    if (Math.abs(event.clientY - drag.startY) < 5) return;
+    if (!wholeCategoryVisible(drag.cat)) {
+      drag = null;
       return;
     }
-    const step = event.key === "ArrowUp" ? -1 : event.key === "ArrowDown" ? 1 : 0;
-    if (!step || !event.altKey) return;
+    drag.active = true;
+    drag.card.classList.add("dragging");
+    listEl.classList.add("sorting");
+  }
+  event.preventDefault();
+  followPointer(event.clientY);
+});
+
+window.addEventListener("pointerup", (event) => {
+  if (!drag || drag.pointer !== event.pointerId) return;
+  endDrag(true);
+});
+
+window.addEventListener("pointercancel", (event) => {
+  if (!drag || drag.pointer !== event.pointerId) return;
+  endDrag(false);
+});
+
+listEl.addEventListener("keydown", (event) => {
+  const card = event.target.closest(".app-card");
+  if (!card) return;
+  const id = card.dataset.id;
+  if (event.key === "Enter" || event.key === " ") {
     event.preventDefault();
-    const ids = cardsIn(categoryId).map((item) => item.dataset.id);
-    const from = ids.indexOf(app.id);
-    const to = from + step;
-    if (to < 0 || to >= ids.length) return;
-    ids.splice(to, 0, ids.splice(from, 1)[0]);
-    setOrder(categoryId, ids);
-    const next = listEl.querySelector(`.app-card[data-id="${app.id}"]`);
-    if (next) next.focus();
-  });
-}
+    select(id);
+    return;
+  }
+  const step = event.key === "ArrowUp" ? -1 : event.key === "ArrowDown" ? 1 : 0;
+  if (!step || !event.altKey) return;
+  event.preventDefault();
+  const categoryId = card.dataset.cat;
+  const ids = cardsIn(categoryId).map((item) => item.dataset.id);
+  const from = ids.indexOf(id);
+  const to = from + step;
+  if (to < 0 || to >= ids.length) return;
+  ids.splice(to, 0, ids.splice(from, 1)[0]);
+  setOrder(categoryId, ids);
+  const next = listEl.querySelector(`.app-card[data-id="${id}"]`);
+  if (next) next.focus();
+});
 
 function hue(id) {
   let n = 0;
@@ -500,8 +526,7 @@ function appendCard(app, ranked) {
       el("span", { class: "row-name", text: app.name }),
       el("span", { class: "row-pitch", text: app.people || "" }),
     ]);
-    const hasVideo = app.video && app.video.kind !== "note";
-    const card = el(
+  const card = el(
       "div",
       {
         class: ranked ? "app-card ranked" : "app-card",
@@ -512,16 +537,9 @@ function appendCard(app, ranked) {
         "data-id": app.id,
         "data-cat": categoryOf(app),
       },
-      [
-        grip,
-        el("span", { class: "place", text: place ? String(place) : "" }),
-        mark,
-        copy,
-        el("span", { class: hasVideo ? "dot" : "dot off", title: hasVideo ? "Has a demo video" : "" }),
-      ]
-    );
-    bindCard(card, grip, app);
-    listEl.append(card);
+    [grip, el("span", { class: "place", text: place ? String(place) : "" }), mark, copy]
+  );
+  listEl.append(card);
 }
 
 function mediaNode(app) {
