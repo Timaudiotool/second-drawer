@@ -68,11 +68,12 @@ const state = {
   status: "",
   fallback: "",
   sending: false,
+  sent: false,
 };
 
 function emptyBallot() {
   const picks = {};
-  for (const [id] of CHALLENGES) picks[id] = { 1: "", 2: "", 3: "" };
+  for (const [id] of CHALLENGES) picks[id] = [];
   return picks;
 }
 
@@ -94,17 +95,19 @@ function categoryLabel(id) {
 
 function rankOf(id) {
   const app = appById(id);
-  const slots = app && state.picks[categoryOf(app)];
-  if (!slots) return 0;
-  for (const [place] of PLACES) {
-    if (slots[place] === id) return place;
-  }
-  return 0;
+  if (!app) return 0;
+  const row = state.picks[categoryOf(app)] || [];
+  return row.indexOf(id) + 1;
+}
+
+function categoryMembers(categoryId) {
+  return APPS.filter((app) => categoryOf(app) === categoryId);
 }
 
 function categoryComplete(id) {
-  const slots = state.picks[id];
-  return PLACES.every(([place]) => appById(slots[place]));
+  const row = state.picks[id] || [];
+  const members = categoryMembers(id).map((app) => app.id);
+  return row.length === members.length && members.every((member) => row.includes(member));
 }
 
 function loadVote() {
@@ -115,10 +118,10 @@ function loadVote() {
     state.notes = saved.notes && typeof saved.notes === "object" ? saved.notes : {};
     state.picks = emptyBallot();
     for (const [id] of CHALLENGES) {
-      const row = (saved.picks && saved.picks[id]) || {};
-      for (const [place] of PLACES) {
-        const app = appById(row[place]);
-        if (app && categoryOf(app) === id) state.picks[id][place] = app.id;
+      const row = (saved.picks && saved.picks[id]) || [];
+      const members = categoryMembers(id).map((app) => app.id);
+      if (Array.isArray(row) && row.length === members.length && members.every((m) => row.includes(m))) {
+        state.picks[id] = row.slice();
       }
     }
   } catch {
@@ -157,20 +160,25 @@ function setStatus(text, href) {
 }
 
 function syncSend() {
-  const ready = state.judge.trim() && CHALLENGES.every(([id]) => categoryComplete(id));
+  const named = Boolean(state.judge.trim());
+  const done = CHALLENGES.filter(([id]) => categoryComplete(id)).length;
+  const ready = named && done === CHALLENGES.length;
   sendEl.disabled = state.sending || !ready;
-}
-
-function categoryMembers(categoryId) {
-  return APPS.filter((app) => categoryOf(app) === categoryId);
+  if (state.sending || state.sent) return;
+  if (!ready) {
+    const missing = [];
+    if (done < CHALLENGES.length) missing.push(`${done} of ${CHALLENGES.length} categories ranked`);
+    if (!named) missing.push("name missing");
+    setStatus(missing.join(" · "));
+    return;
+  }
+  setStatus("Ready to send.");
 }
 
 function sectionApps(categoryId, apps) {
   const group = apps.filter((app) => app.challenges.includes(categoryId));
   if (!categoryComplete(categoryId)) return ordered(categoryId, group);
-  const ranked = PLACES.map(([place]) => appById(state.picks[categoryId][place])).filter(
-    (app) => app && group.includes(app)
-  );
+  const ranked = state.picks[categoryId].map(appById).filter((app) => group.includes(app));
   const rest = ordered(
     categoryId,
     group.filter((app) => !ranked.includes(app))
@@ -178,19 +186,23 @@ function sectionApps(categoryId, apps) {
   return [...ranked, ...rest];
 }
 
-function assign(id, place) {
-  const slots = state.picks[categoryOf(appById(id))];
-  if (!slots) return;
-  if (slots[place] === id) {
-    slots[place] = "";
-  } else {
-    for (const [slot] of PLACES) {
-      if (slots[slot] === id) slots[slot] = "";
-    }
-    slots[place] = id;
-  }
+function setOrder(categoryId, ids) {
+  const members = categoryMembers(categoryId).map((app) => app.id);
+  if (ids.length !== members.length || members.some((member) => !ids.includes(member))) return;
+  state.picks[categoryId] = ids.slice();
+  state.sent = false;
   saveVote();
   paintVote();
+}
+
+function assign(id, place) {
+  const categoryId = categoryOf(appById(id));
+  const current = categoryComplete(categoryId)
+    ? state.picks[categoryId].slice()
+    : sectionApps(categoryId, APPS).map((app) => app.id);
+  current.splice(current.indexOf(id), 1);
+  current.splice(place - 1, 0, id);
+  setOrder(categoryId, current);
 }
 
 function paintVote() {
@@ -215,7 +227,7 @@ function voteBox(app) {
         "data-place": String(value),
         pressed: place === value,
         text: placeLabel,
-        title: place === value ? "Click again to undo" : `Rank ${placeLabel} in ${label}`,
+        title: `Rank ${placeLabel} in ${label}`,
         "aria-label": `Rank ${placeLabel} in ${label}`,
         onclick: () => assign(app.id, value),
       })
@@ -234,7 +246,7 @@ function voteBox(app) {
   return el("section", { class: "vote-box" }, [
     el("h3", { text: `Place in ${label}` }),
     points,
-    el("p", { class: "vote-hint", text: "Or drag this category in the list. The top row is 1st." }),
+    el("p", { class: "vote-hint", text: "You can also drag the cards in the list. The top card is 1st." }),
     note,
   ]);
 }
@@ -252,6 +264,7 @@ async function sendVote() {
     return;
   }
   state.sending = true;
+  state.sent = false;
   syncSend();
   setStatus("Sending…");
   let sent = 0;
@@ -260,15 +273,16 @@ async function sendVote() {
       const slots = state.picks[id];
       const body = new URLSearchParams();
       body.append(FIELDS.judge, `${judge} · ${label}`);
-      body.append(FIELDS.p3, voteName(appById(slots[1])));
-      body.append(FIELDS.p2, voteName(appById(slots[2])));
-      body.append(FIELDS.p1, voteName(appById(slots[3])));
+      body.append(FIELDS.p3, voteName(appById(slots[0])));
+      body.append(FIELDS.p2, voteName(appById(slots[1])));
+      body.append(FIELDS.p1, voteName(appById(slots[2])));
       body.append(FIELDS.notes, notesPayload(id));
       try {
         await fetch(`${FORM}/formResponse`, { method: "POST", mode: "no-cors", body });
         sent += 1;
       } catch {
         body.append("usp", "pp_url");
+        state.sent = true;
         setStatus(
           sent ? `Sent ${sent} of 6 categories. ${label} did not leave this browser.` : "The vote did not leave this browser.",
           `${FORM}/viewform?${body.toString()}`
@@ -276,7 +290,8 @@ async function sendVote() {
         return;
       }
     }
-    setStatus("Sent a ranking for all 6 categories. Each category is its own row. Sending again replaces that category.");
+    state.sent = true;
+    setStatus("Sent all 6 categories. Sending again replaces your vote.");
   } finally {
     state.sending = false;
     syncSend();
@@ -285,40 +300,43 @@ async function sendVote() {
 
 let drag = null;
 
-function rowsIn(categoryId) {
-  return [...listEl.querySelectorAll(".app-row")].filter((row) => row.dataset.cat === categoryId);
+function cardsIn(categoryId) {
+  return [...listEl.querySelectorAll(".app-card")].filter((card) => card.dataset.cat === categoryId);
+}
+
+function wholeCategoryVisible(categoryId) {
+  return cardsIn(categoryId).length === categoryMembers(categoryId).length;
 }
 
 function commitOrder(categoryId) {
-  const ids = rowsIn(categoryId).map((row) => row.dataset.id);
-  const members = categoryMembers(categoryId).map((app) => app.id);
-  if (ids.length !== members.length || ids.some((id) => !members.includes(id))) return;
-  state.picks[categoryId] = { 1: ids[0], 2: ids[1], 3: ids[2] };
-  saveVote();
-  paintVote();
+  setOrder(categoryId, cardsIn(categoryId).map((card) => card.dataset.id));
 }
 
-function bindDrag(grip, app) {
-  grip.addEventListener("pointerdown", (event) => {
-    if (event.button != null && event.button !== 0) return;
-    const cat = categoryOf(app);
-    if (rowsIn(cat).length !== categoryMembers(cat).length) return;
-    event.preventDefault();
-    event.stopPropagation();
-    try {
-      grip.setPointerCapture(event.pointerId);
-    } catch {
-      /* Pointer capture is unavailable for this event. */
-    }
-    drag = { cat, id: app.id, pointer: event.pointerId, moved: false };
-    grip.closest(".app-row").classList.add("dragging");
+function bindCard(card, grip, app) {
+  const categoryId = categoryOf(app);
+
+  card.addEventListener("pointerdown", (event) => {
+    if (event.button) return;
+    const fromGrip = grip.contains(event.target);
+    if (event.pointerType === "touch" && !fromGrip) return;
+    drag = { id: app.id, pointer: event.pointerId, startY: event.clientY, active: false };
+    if (fromGrip) event.preventDefault();
   });
-  grip.addEventListener("pointermove", (event) => {
+
+  card.addEventListener("pointermove", (event) => {
     if (!drag || drag.id !== app.id || drag.pointer !== event.pointerId) return;
-    const row = grip.closest(".app-row");
-    const others = rowsIn(drag.cat).filter((item) => item !== row);
-    if (!others.length) return;
-    drag.moved = true;
+    if (!drag.active) {
+      if (Math.abs(event.clientY - drag.startY) < 5) return;
+      if (!wholeCategoryVisible(categoryId)) {
+        drag = null;
+        return;
+      }
+      drag.active = true;
+      card.classList.add("dragging");
+      card.setPointerCapture(event.pointerId);
+    }
+    event.preventDefault();
+    const others = cardsIn(categoryId).filter((item) => item !== card);
     let before = null;
     for (const other of others) {
       const box = other.getBoundingClientRect();
@@ -327,18 +345,44 @@ function bindDrag(grip, app) {
         break;
       }
     }
-    listEl.insertBefore(row, before || others[others.length - 1].nextSibling);
+    listEl.insertBefore(card, before || others[others.length - 1].nextSibling);
   });
+
   const finish = (event) => {
     if (!drag || drag.id !== app.id || drag.pointer !== event.pointerId) return;
-    const moved = drag.moved;
-    const cat = drag.cat;
+    const dragged = drag.active;
     drag = null;
-    if (moved) commitOrder(cat);
-    else grip.closest(".app-row").classList.remove("dragging");
+    card.classList.remove("dragging");
+    if (dragged) commitOrder(categoryId);
+    else select(app.id);
   };
-  grip.addEventListener("pointerup", finish);
-  grip.addEventListener("pointercancel", finish);
+  card.addEventListener("pointerup", finish);
+  card.addEventListener("pointercancel", () => {
+    if (!drag || drag.id !== app.id) return;
+    const dragged = drag.active;
+    drag = null;
+    card.classList.remove("dragging");
+    if (dragged) paintVote();
+  });
+
+  card.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      select(app.id);
+      return;
+    }
+    const step = event.key === "ArrowUp" ? -1 : event.key === "ArrowDown" ? 1 : 0;
+    if (!step || !event.altKey) return;
+    event.preventDefault();
+    const ids = cardsIn(categoryId).map((item) => item.dataset.id);
+    const from = ids.indexOf(app.id);
+    const to = from + step;
+    if (to < 0 || to >= ids.length) return;
+    ids.splice(to, 0, ids.splice(from, 1)[0]);
+    setOrder(categoryId, ids);
+    const next = listEl.querySelector(`.app-card[data-id="${app.id}"]`);
+    if (next) next.focus();
+  });
 }
 
 function hue(id) {
@@ -425,56 +469,59 @@ function renderList(apps) {
   }
   const sections = CHALLENGES.map(([id, label]) => [id, label, sectionApps(id, apps)]).filter(([, , group]) => group.length);
   for (const [id, label, group] of sections) {
-    const heading = el("p", { class: "group-label" });
-    heading.append(document.createTextNode(label));
-    if (!categoryComplete(id)) heading.append(el("span", { class: "hint", text: " · drag to rank" }));
-    listEl.append(heading);
-    for (const app of group) appendRow(app);
+    const full = group.length === categoryMembers(id).length;
+    const done = categoryComplete(id);
+    const side = done
+      ? el("span", { class: "group-state done", text: "Ranked" })
+      : full
+        ? el("button", {
+            class: "group-set",
+            type: "button",
+            text: "Keep this order",
+            title: `Take the order shown as your ranking for ${label}`,
+            onclick: () => setOrder(id, group.map((app) => app.id)),
+          })
+        : el("span", { class: "group-state", text: "Clear the search to rank" });
+    listEl.append(
+      el("div", { class: "group-head" }, [el("p", { class: "group-label", text: label }), side])
+    );
+    for (const app of group) appendCard(app, done);
   }
 }
 
-function appendRow(app) {
+function appendCard(app, ranked) {
     const color = hue(app.id);
     const mark = el("span", { class: "mark", text: initials(app.name) });
     mark.style.background = PAPER[color];
     mark.style.color = INK[color];
+    const grip = el("span", { class: "grip", text: "⠿", "aria-hidden": "true" });
     const place = rankOf(app.id);
-    const grip = el("span", {
-      class: place ? "grip ranked" : "grip",
-      text: place ? String(place) : "↕",
-      title: "Drag to rank this category",
-      "aria-label": place ? `Place ${place}. Drag to reorder` : "Drag to rank this category",
-    });
-    const copy = el("span", {}, [
+    const copy = el("span", { class: "row-copy" }, [
       el("span", { class: "row-name", text: app.name }),
-      el("span", {
-        class: "row-pitch",
-        text: app.people || "",
-      }),
+      el("span", { class: "row-pitch", text: app.people || "" }),
     ]);
     const hasVideo = app.video && app.video.kind !== "note";
-    const open = el(
-      "button",
-      {
-        class: "row-main",
-        type: "button",
-        onclick: () => select(app.id),
-      },
-      [mark, copy]
-    );
-    const row = el(
+    const card = el(
       "div",
       {
-        class: "app-row",
+        class: ranked ? "app-card ranked" : "app-card",
         role: "option",
+        tabindex: "0",
         "aria-selected": app.id === state.selected ? "true" : "false",
+        "aria-label": place ? `${place}. ${app.name}` : app.name,
         "data-id": app.id,
         "data-cat": categoryOf(app),
       },
-      [grip, open, el("span", { class: hasVideo ? "dot" : "dot off", title: hasVideo ? "Has a demo video" : "" })]
+      [
+        grip,
+        el("span", { class: "place", text: place ? String(place) : "" }),
+        mark,
+        copy,
+        el("span", { class: hasVideo ? "dot" : "dot off", title: hasVideo ? "Has a demo video" : "" }),
+      ]
     );
-    bindDrag(grip, app);
-    listEl.append(row);
+    bindCard(card, grip, app);
+    listEl.append(card);
 }
 
 function mediaNode(app) {
@@ -661,6 +708,7 @@ searchEl.addEventListener("input", () => {
 
 judgeEl.addEventListener("input", () => {
   state.judge = judgeEl.value;
+  state.sent = false;
   saveVote();
   syncSend();
 });
