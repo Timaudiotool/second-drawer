@@ -46,7 +46,12 @@ const VOTE_NAMES = {
   "pocket-producer": "Pocket Producer (Wadood)",
   "pocket-producer-library": "Pocket Producer (Chuling Li)",
 };
-const STORE = "lb-vote-v1";
+const STORE = "lb-vote-v2";
+const PLACES = [
+  [1, "1st"],
+  [2, "2nd"],
+  [3, "3rd"],
+];
 
 const ballotForm = document.getElementById("ballot");
 const judgeEl = document.getElementById("judge");
@@ -57,15 +62,20 @@ const statusEl = document.getElementById("ballot-status");
 const state = {
   q: "",
   challenge: "",
-  video: false,
   selected: location.hash.replace("#", "") || APPS[0].id,
   judge: "",
-  picks: { p3: "", p2: "", p1: "" },
+  picks: emptyBallot(),
   notes: {},
   status: "",
   fallback: "",
   sending: false,
 };
+
+function emptyBallot() {
+  const picks = {};
+  for (const [id] of CHALLENGES) picks[id] = { 1: "", 2: "", 3: "" };
+  return picks;
+}
 
 function voteName(app) {
   return VOTE_NAMES[app.id] || app.name;
@@ -75,11 +85,27 @@ function appById(id) {
   return APPS.find((app) => app.id === id);
 }
 
+function categoryOf(app) {
+  return CHALLENGES.find(([id]) => app.challenges.includes(id))?.[0] || "";
+}
+
+function categoryLabel(id) {
+  return CHALLENGES.find(([key, label]) => key === id)?.[1] || id;
+}
+
 function rankOf(id) {
-  if (state.picks.p3 === id) return 3;
-  if (state.picks.p2 === id) return 2;
-  if (state.picks.p1 === id) return 1;
+  const app = appById(id);
+  const slots = app && state.picks[categoryOf(app)];
+  if (!slots) return 0;
+  for (const [place] of PLACES) {
+    if (slots[place] === id) return place;
+  }
   return 0;
+}
+
+function categoryComplete(id) {
+  const slots = state.picks[id];
+  return PLACES.every(([place]) => appById(slots[place]));
 }
 
 function loadVote() {
@@ -88,9 +114,13 @@ function loadVote() {
     if (!saved) return;
     state.judge = saved.judge || "";
     state.notes = saved.notes && typeof saved.notes === "object" ? saved.notes : {};
-    for (const key of ["p3", "p2", "p1"]) {
-      const id = saved.picks && saved.picks[key];
-      state.picks[key] = appById(id) ? id : "";
+    state.picks = emptyBallot();
+    for (const [id] of CHALLENGES) {
+      const row = (saved.picks && saved.picks[id]) || {};
+      for (const [place] of PLACES) {
+        const app = appById(row[place]);
+        if (app && categoryOf(app) === id) state.picks[id][place] = app.id;
+      }
     }
   } catch {
     /* keep the empty ballot */
@@ -105,13 +135,14 @@ function saveVote() {
   );
 }
 
-function notesPayload() {
-  return APPS.map((app) => {
+function notesPayload(categoryId) {
+  const lines = [`Category: ${categoryLabel(categoryId)}`];
+  for (const app of APPS) {
+    if (categoryOf(app) !== categoryId) continue;
     const note = (state.notes[app.id] || "").trim().replace(/\s+/g, " ");
-    return note ? `${voteName(app)}: ${note}` : "";
-  })
-    .filter(Boolean)
-    .join("\n");
+    if (note) lines.push(`${voteName(app)}: ${note}`);
+  }
+  return lines.join("\n");
 }
 
 function setStatus(text, href) {
@@ -127,34 +158,57 @@ function setStatus(text, href) {
 }
 
 function syncBallot() {
+  const focus = state.challenge || categoryOf(appById(state.selected) || {}) || "";
   picksEl.replaceChildren();
-  for (const [key, points] of [["p3", 3], ["p2", 2], ["p1", 1]]) {
-    const app = appById(state.picks[key]);
-    const pick = el(
-      "button",
-      {
-        class: app ? "pick filled" : "pick",
-        type: "button",
-        onclick: () => {
-          if (app) select(app.id);
-        },
-      },
-      [el("b", { text: String(points) }), el("span", { text: app ? voteName(app) : "Not chosen" })]
+  for (const [id, label] of CHALLENGES) {
+    const slots = state.picks[id];
+    const picks = el("div", { class: "cat-picks" });
+    for (const [place, placeLabel] of PLACES) {
+      const app = appById(slots[place]);
+      picks.append(
+        el(
+          "button",
+          {
+            class: app ? "pick filled" : "pick",
+            type: "button",
+            onclick: () => {
+              if (app) select(app.id);
+            },
+          },
+          [el("b", { text: placeLabel }), el("span", { text: app ? voteName(app) : "Not chosen" })]
+        )
+      );
+    }
+    const done = categoryComplete(id);
+    picksEl.append(
+      el("div", { class: "cat-row" }, [
+        el("button", {
+          class: done ? "cat-name done" : "cat-name",
+          type: "button",
+          pressed: focus === id,
+          text: label,
+          onclick: () => {
+            state.challenge = state.challenge === id ? "" : id;
+            render();
+          },
+        }),
+        picks,
+      ])
     );
-    picksEl.append(pick);
   }
   sendEl.disabled = state.sending;
 }
 
-function assign(id, points) {
-  const key = `p${points}`;
-  if (state.picks[key] === id) {
-    state.picks[key] = "";
+function assign(id, place) {
+  const slots = state.picks[categoryOf(appById(id))];
+  if (!slots) return;
+  if (slots[place] === id) {
+    slots[place] = "";
   } else {
-    for (const slot of ["p3", "p2", "p1"]) {
-      if (state.picks[slot] === id) state.picks[slot] = "";
+    for (const [slot] of PLACES) {
+      if (slots[slot] === id) slots[slot] = "";
     }
-    state.picks[key] = id;
+    slots[place] = id;
   }
   saveVote();
   paintVote();
@@ -162,26 +216,28 @@ function assign(id, points) {
 
 function paintVote() {
   renderList(visibleApps());
-  for (const button of stageEl.querySelectorAll("[data-points]")) {
-    button.setAttribute("aria-pressed", Number(button.dataset.points) === rankOf(state.selected) ? "true" : "false");
+  const place = rankOf(state.selected);
+  for (const button of stageEl.querySelectorAll("[data-place]")) {
+    button.setAttribute("aria-pressed", Number(button.dataset.place) === place ? "true" : "false");
   }
   syncBallot();
 }
 
 function voteBox(app) {
-  const rank = rankOf(app.id);
+  const place = rankOf(app.id);
+  const label = categoryLabel(categoryOf(app));
   const points = el(
     "div",
     { class: "points" },
-    [3, 2, 1].map((value) =>
+    PLACES.map(([value, placeLabel]) =>
       el("button", {
         class: "point",
         type: "button",
-        "data-points": String(value),
-        pressed: rank === value,
-        text: String(value),
-        title: rank === value ? "Click again to undo" : `Give ${value} ${value === 1 ? "point" : "points"}`,
-        "aria-label": `Give ${value} ${value === 1 ? "point" : "points"}`,
+        "data-place": String(value),
+        pressed: place === value,
+        text: placeLabel,
+        title: place === value ? "Click again to undo" : `Rank ${placeLabel} in ${label}`,
+        "aria-label": `Rank ${placeLabel} in ${label}`,
         onclick: () => assign(app.id, value),
       })
     )
@@ -197,42 +253,51 @@ function voteBox(app) {
     saveVote();
   });
   return el("section", { class: "vote-box" }, [
-    el("h3", { text: "Your points" }),
+    el("h3", { text: `Place in ${label}` }),
     points,
-    el("p", { class: "vote-hint", text: "One app for each number. Click a number again to undo." }),
+    el("p", { class: "vote-hint", text: "Rank this category 1st, 2nd and 3rd. Click a place again to undo." }),
     note,
   ]);
 }
 
 async function sendVote() {
   const judge = state.judge.trim();
-  const pick3 = appById(state.picks.p3);
-  const pick2 = appById(state.picks.p2);
-  const pick1 = appById(state.picks.p1);
   if (!judge) {
     setStatus("Add your name first.");
     judgeEl.focus();
     return;
   }
-  if (!pick3 || !pick2 || !pick1) {
-    setStatus("Choose a 1st, 2nd and 3rd before sending.");
+  const open = CHALLENGES.filter(([id]) => !categoryComplete(id)).map(([, label]) => label);
+  if (open.length) {
+    setStatus(`Still open: ${open.join(", ")}.`);
     return;
   }
-  const body = new URLSearchParams();
-  body.append(FIELDS.judge, judge);
-  body.append(FIELDS.p3, voteName(pick3));
-  body.append(FIELDS.p2, voteName(pick2));
-  body.append(FIELDS.p1, voteName(pick1));
-  body.append(FIELDS.notes, notesPayload());
   state.sending = true;
   syncBallot();
   setStatus("Sending…");
+  let sent = 0;
   try {
-    await fetch(`${FORM}/formResponse`, { method: "POST", mode: "no-cors", body });
-    setStatus("Sent from this browser. A new row in the sheet is the confirmation. Sending again replaces your last vote.");
-  } catch {
-    body.append("usp", "pp_url");
-    setStatus("The vote did not leave this browser.", `${FORM}/viewform?${body.toString()}`);
+    for (const [id, label] of CHALLENGES) {
+      const slots = state.picks[id];
+      const body = new URLSearchParams();
+      body.append(FIELDS.judge, `${judge} · ${label}`);
+      body.append(FIELDS.p3, voteName(appById(slots[1])));
+      body.append(FIELDS.p2, voteName(appById(slots[2])));
+      body.append(FIELDS.p1, voteName(appById(slots[3])));
+      body.append(FIELDS.notes, notesPayload(id));
+      try {
+        await fetch(`${FORM}/formResponse`, { method: "POST", mode: "no-cors", body });
+        sent += 1;
+      } catch {
+        body.append("usp", "pp_url");
+        setStatus(
+          sent ? `Sent ${sent} of 6 categories. ${label} did not leave this browser.` : "The vote did not leave this browser.",
+          `${FORM}/viewform?${body.toString()}`
+        );
+        return;
+      }
+    }
+    setStatus("Sent a ranking for all 6 categories. Each category is its own row. Sending again replaces that category.");
   } finally {
     state.sending = false;
     syncBallot();
@@ -253,7 +318,6 @@ function initials(name) {
 
 function matches(app) {
   if (state.challenge && !app.challenges.includes(state.challenge)) return false;
-  if (state.video && !(app.video && app.video.kind !== "note")) return false;
   const q = state.q.trim().toLowerCase();
   if (!q) return true;
   const hay = [
@@ -313,18 +377,6 @@ function renderFilters() {
       })
     );
   }
-  filtersEl.append(
-    el("button", {
-      class: "chip",
-      type: "button",
-      pressed: state.video,
-      text: "With a video",
-      onclick: () => {
-        state.video = !state.video;
-        render();
-      },
-    })
-  );
 }
 
 function renderList(apps) {
@@ -348,14 +400,14 @@ function appendRow(app) {
     const mark = el("span", { class: "mark", text: initials(app.name) });
     mark.style.background = PAPER[color];
     mark.style.color = INK[color];
-    const rank = rankOf(app.id);
+    const place = rankOf(app.id);
     const copy = el("span", {}, [
       el("span", { class: "row-name", text: app.name }),
       el("span", {
         class: "row-pitch",
         text: app.people || "",
       }),
-      ...(rank ? [el("span", { class: "rank-badge", text: `${rank} pt` })] : []),
+      ...(place ? [el("span", { class: "rank-badge", text: PLACES[place - 1][1] })] : []),
     ]);
     const hasVideo = app.video && app.video.kind !== "note";
     const row = el(

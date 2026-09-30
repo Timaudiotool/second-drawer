@@ -111,7 +111,7 @@ h1 {
   display: grid;
   grid-template-columns: minmax(180px, 240px) 1fr auto;
   gap: 16px;
-  align-items: center;
+  align-items: start;
   margin: 8px 18px 0;
   padding: 12px 14px;
   border: 1px solid rgba(214, 242, 92, 0.28);
@@ -139,10 +139,29 @@ h1 {
   color: var(--ink);
 }
 .ballot-name input:focus { border-color: rgba(214, 242, 92, 0.7); }
-.ballot-picks {
+.ballot-board { display: grid; gap: 2px; }
+.cat-row {
+  display: grid;
+  grid-template-columns: 108px 1fr;
+  gap: 8px;
+  align-items: center;
+}
+.cat-name {
+  border: 0;
+  background: transparent;
+  text-align: left;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 640;
+  padding: 4px 0;
+}
+.cat-name[aria-pressed="true"] { color: var(--lime); }
+.cat-name.done { color: var(--ink); }
+.cat-name.done[aria-pressed="true"] { color: var(--lime); }
+.cat-picks {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
 }
 .pick {
   display: flex;
@@ -203,13 +222,14 @@ h1 {
 }
 .points { display: flex; gap: 8px; }
 .point {
-  width: 46px;
+  min-width: 58px;
   height: 46px;
+  padding: 0 12px;
   border-radius: 14px;
   border: 1px solid var(--line);
   background: transparent;
   font-weight: 640;
-  font-size: 16px;
+  font-size: 15px;
 }
 .point[aria-pressed="true"] {
   background: var(--lime);
@@ -499,6 +519,7 @@ details.fold summary {
     margin: 0 12px;
     justify-items: stretch;
   }
+  .cat-row { grid-template-columns: 1fr; gap: 2px; }
   .ballot-send { justify-items: start; }
   .ballot-status { text-align: left; max-width: none; }
   .shell {
