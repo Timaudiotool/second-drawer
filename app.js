@@ -355,13 +355,14 @@ function followPointer(clientY) {
 }
 
 function endDrag(commit) {
-  const { card, cat, id, active } = drag;
+  const { card, cat, id, active, fromGrip } = drag;
   drag = null;
   card.style.transform = "";
   card.classList.remove("dragging");
   listEl.classList.remove("sorting");
   if (!active) {
-    if (commit) select(id);
+    // The handle only sorts. A tap anywhere else on the card opens it.
+    if (commit && !fromGrip) select(id);
     return;
   }
   if (commit) commitOrder(cat);
@@ -373,7 +374,6 @@ listEl.addEventListener("pointerdown", (event) => {
   const card = event.target.closest(".app-card");
   if (!card) return;
   const fromGrip = Boolean(event.target.closest(".grip"));
-  if (event.pointerType === "touch" && !fromGrip) return;
   drag = {
     card,
     id: card.dataset.id,
@@ -382,14 +382,22 @@ listEl.addEventListener("pointerdown", (event) => {
     startY: event.clientY,
     grab: event.clientY - card.getBoundingClientRect().top,
     active: false,
+    fromGrip,
+    touch: event.pointerType === "touch",
   };
   if (fromGrip) event.preventDefault();
 });
 
 window.addEventListener("pointermove", (event) => {
   if (!drag || drag.pointer !== event.pointerId) return;
+  const moved = Math.abs(event.clientY - drag.startY);
   if (!drag.active) {
-    if (Math.abs(event.clientY - drag.startY) < 5) return;
+    // A finger on the card body scrolls the list. Only the handle drags.
+    if (drag.touch && !drag.fromGrip) {
+      if (moved > 12) drag = null;
+      return;
+    }
+    if (moved < 5) return;
     if (!wholeCategoryVisible(drag.cat)) {
       drag = null;
       return;
