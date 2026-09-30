@@ -420,7 +420,11 @@ window.APPS = [
     ],
     "url": "https://beatcorn.sentientstudios.chatgpt.site/",
     "password": "LETSBUILD",
-    "video": null,
+    "video": {
+      "kind": "iframe",
+      "src": "https://www.youtube-nocookie.com/embed/Zk2WCC61-UM",
+      "href": "https://www.youtube.com/watch?v=Zk2WCC61-UM"
+    },
     "github": "",
     "source": "",
     "sourceNote": "",
